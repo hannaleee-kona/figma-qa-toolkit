@@ -1,0 +1,747 @@
+<title>체크레이어</title>
+<meta name="description" content="네이밍, 색상 대비, CSS 변환을 한 화면에서 확인하는 디자인 QA 데모 도구" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #f3f1ea;
+    --surface: #ffffff;
+    --surface-2: #ece9e0;
+    --ink: #191a16;
+    --ink-soft: #63625a;
+    --ink-faint: #a3a196;
+    --line: #d9d5c8;
+    --accent: #e0461f;
+    --accent-ink: #fff7f2;
+    --ok: #1c7a4d;
+    --ok-bg: #e4f3ea;
+    --warn: #9a6a06;
+    --warn-bg: #faf0d8;
+    --fail: #b3311a;
+    --fail-bg: #fbe7e2;
+    --mono-bg: #191d16;
+    --mono-ink: #d9f5c4;
+    --mono-line: #33392c;
+    --radius-sm: 3px;
+    --radius-md: 6px;
+    --shadow: 0 1px 0 rgba(25,26,22,0.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14140f;
+      --surface: #1c1c15;
+      --surface-2: #24241b;
+      --ink: #f1efe4;
+      --ink-soft: #b3b0a0;
+      --ink-faint: #6f6d5f;
+      --line: #35342a;
+      --accent: #ff6a3d;
+      --accent-ink: #1c0800;
+      --ok: #5fd699;
+      --ok-bg: #123324;
+      --warn: #e8c15a;
+      --warn-bg: #362a0c;
+      --fail: #ff8a75;
+      --fail-bg: #3a140f;
+      --mono-bg: #0d0f0a;
+      --mono-ink: #c9f2ab;
+      --mono-line: #2a2e20;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14140f;
+    --surface: #1c1c15;
+    --surface-2: #24241b;
+    --ink: #f1efe4;
+    --ink-soft: #b3b0a0;
+    --ink-faint: #6f6d5f;
+    --line: #35342a;
+    --accent: #ff6a3d;
+    --accent-ink: #1c0800;
+    --ok: #5fd699;
+    --ok-bg: #123324;
+    --warn: #e8c15a;
+    --warn-bg: #362a0c;
+    --fail: #ff8a75;
+    --fail-bg: #3a140f;
+    --mono-bg: #0d0f0a;
+    --mono-ink: #c9f2ab;
+    --mono-line: #2a2e20;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans KR', -apple-system, sans-serif;
+    padding-inline: 20px;
+    padding-block: 28px 60px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1, h2, h3, .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 18px;
+    margin-bottom: 6px;
+  }
+  .brand { display: flex; flex-direction: column; gap: 6px; }
+  .brand .tag {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  h1 {
+    font-size: clamp(28px, 5vw, 38px);
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .subhead {
+    color: var(--ink-soft);
+    font-size: 14px;
+    max-width: 46ch;
+    line-height: 1.55;
+    margin: 2px 0 0;
+  }
+  .meta-box {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-faint);
+    text-align: right;
+    line-height: 1.7;
+    white-space: nowrap;
+  }
+  .meta-box strong { color: var(--ink-soft); font-weight: 600; }
+
+  nav.tabs {
+    display: flex;
+    gap: 2px;
+    margin: 28px 0 0;
+    border-bottom: 1px solid var(--line);
+  }
+  nav.tabs button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    background: none;
+    border: none;
+    padding: 12px 6px;
+    margin-right: 22px;
+    color: var(--ink-faint);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transform: translateY(1px);
+  }
+  nav.tabs button .num {
+    display: inline-block;
+    font-size: 10px;
+    background: var(--surface-2);
+    color: var(--ink-soft);
+    border-radius: var(--radius-sm);
+    padding: 1px 5px;
+    margin-left: 6px;
+  }
+  nav.tabs button.active {
+    color: var(--ink);
+    border-bottom-color: var(--accent);
+  }
+  nav.tabs button.active .num { background: var(--accent); color: var(--accent-ink); }
+
+  section.panel { display: none; padding-top: 24px; }
+  section.panel.active { display: block; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 720px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+  }
+  .card-head {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-head .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint);
+  }
+  .example-pill {
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    padding: 2px 8px;
+  }
+  .card-body { padding: 16px; }
+
+  textarea, input[type="text"], input[type="number"] {
+    width: 100%;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink);
+    padding: 9px 10px;
+  }
+  textarea { min-height: 220px; resize: vertical; line-height: 1.65; }
+  label.field {
+    display: block;
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 5px;
+    font-weight: 500;
+  }
+  .field-row { margin-bottom: 12px; }
+  .field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  button.run {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 13px;
+    background: var(--ink);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  button.run:hover { background: var(--accent); color: var(--accent-ink); }
+  button.ghost {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    padding: 7px 12px;
+    cursor: pointer;
+  }
+  button.ghost:hover { border-color: var(--ink); color: var(--ink); }
+
+  .issue {
+    display: flex;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--line);
+    font-size: 13px;
+  }
+  .issue:last-child { border-bottom: none; }
+  .issue .badge {
+    flex: 0 0 auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    height: fit-content;
+    white-space: nowrap;
+  }
+  .badge.whitespace, .badge.slash { background: var(--warn-bg); color: var(--warn); }
+  .badge.case-mismatch, .badge.plural-mismatch { background: var(--fail-bg); color: var(--fail); }
+  .issue .msg { color: var(--ink); line-height: 1.5; }
+  .issue .msg code { font-family: 'IBM Plex Mono', monospace; background: var(--surface-2); padding: 1px 4px; border-radius: 2px; }
+
+  .ok-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ok);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    padding: 6px 0;
+  }
+
+  .result-summary {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .result-summary .n { font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 700; }
+  .result-summary .n.zero { color: var(--ok); }
+  .result-summary .n.some { color: var(--fail); }
+  .result-summary .label2 { font-size: 12px; color: var(--ink-soft); }
+
+  .swatch-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .swatch {
+    flex: 1;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .swatch .chip { height: 44px; }
+  .swatch .info { padding: 6px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-soft); }
+
+  .ratio-box {
+    text-align: center;
+    padding: 18px 0 8px;
+  }
+  .ratio-box .big {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 44px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .ratio-box .big.pass { color: var(--ok); }
+  .ratio-box .big.fail { color: var(--fail); }
+  .ratio-box .sub { font-size: 12px; color: var(--ink-faint); margin-top: 4px; }
+
+  .badge-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .wcag-badge {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .wcag-badge.pass { background: var(--ok-bg); color: var(--ok); }
+  .wcag-badge.fail { background: var(--fail-bg); color: var(--fail); }
+  .wcag-badge .icon { font-family: 'IBM Plex Mono', monospace; font-weight: 700; }
+
+  .css-out {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    background: var(--mono-bg);
+    color: var(--mono-ink);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    border: 1px solid var(--mono-line);
+    min-height: 180px;
+  }
+  .copy-row { display: flex; justify-content: flex-end; margin-top: 10px; }
+
+  .toast {
+    position: fixed;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: var(--bg);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 8px 16px;
+    border-radius: 100px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  footer {
+    margin-top: 44px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--ink-faint);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  footer .mono { color: var(--ink-soft); }
+</style>
+
+<header>
+  <div class="brand">
+    <span class="tag">Design QA Demo</span>
+    <h1>체크레이어</h1>
+    <p class="subhead">네이밍 컨벤션, WCAG 색상 대비, CSS 변환을 한 화면에서 확인하는 디자인 QA 도구입니다.</p>
+  </div>
+  <div class="meta-box">
+    <div><strong>v0.1</strong> · MVP</div>
+    <div>규칙 기반 정적 분석</div>
+    <div>Figma 플러그인 버전과 동일 로직</div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="active" data-panel="naming">네이밍 체크</button>
+  <button data-panel="contrast">컬러 대비</button>
+  <button data-panel="css">CSS 추출</button>
+</nav>
+
+<section class="panel active" id="panel-naming">
+  <div class="layout">
+    <div class="card">
+      <div class="card-head">
+        <span class="label">레이어 이름 목록</span>
+        <span class="example-pill">예시 데이터</span>
+      </div>
+      <div class="card-body">
+        <label class="field">한 줄에 하나씩 붙여넣으세요 (실제 Figma 컴포넌트 이름 예시)</label>
+        <textarea id="naming-input"></textarea>
+        <button class="run" id="btn-lint">검사 실행</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <span class="label">검사 결과</span>
+      </div>
+      <div class="card-body" id="naming-output">
+        <p style="color:var(--ink-faint);font-size:13px;">왼쪽에서 검사 실행을 눌러주세요.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel" id="panel-contrast">
+  <div class="layout">
+    <div class="card">
+      <div class="card-head">
+        <span class="label">색상 2개 입력</span>
+        <span class="example-pill">예시 데이터</span>
+      </div>
+      <div class="card-body">
+        <div class="field-row">
+          <label class="field">전경색 (예: 텍스트)</label>
+          <div class="field-grid">
+            <input type="text" id="color-a-hex" maxlength="7" />
+            <input type="color" id="color-a-pick" style="height:38px;padding:2px;" />
+          </div>
+        </div>
+        <div class="field-row">
+          <label class="field">배경색</label>
+          <div class="field-grid">
+            <input type="text" id="color-b-hex" maxlength="7" />
+            <input type="color" id="color-b-pick" style="height:38px;padding:2px;" />
+          </div>
+        </div>
+        <button class="run" id="btn-contrast">대비 계산</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="label">WCAG 결과</span></div>
+      <div class="card-body" id="contrast-output">
+        <p style="color:var(--ink-faint);font-size:13px;">왼쪽에서 대비 계산을 눌러주세요.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel" id="panel-css">
+  <div class="layout">
+    <div class="card">
+      <div class="card-head">
+        <span class="label">레이어 속성 입력</span>
+        <span class="example-pill">예시 데이터</span>
+      </div>
+      <div class="card-body">
+        <div class="field-row">
+          <label class="field">클래스 이름</label>
+          <input type="text" id="css-name" />
+        </div>
+        <div class="field-row">
+          <label class="field">배경색</label>
+          <input type="text" id="css-bg" />
+        </div>
+        <div class="field-row">
+          <label class="field">폰트</label>
+          <div class="field-grid">
+            <input type="text" id="css-font" placeholder="font-family" />
+            <input type="text" id="css-fontsize" placeholder="font-size (px)" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-grid">
+            <input type="text" id="css-lineheight" placeholder="line-height (px)" />
+            <input type="text" id="css-letterspacing" placeholder="letter-spacing (px)" />
+          </div>
+        </div>
+        <div class="field-row">
+          <label class="field">Auto Layout</label>
+          <div class="field-grid">
+            <input type="text" id="css-gap" placeholder="gap (px)" />
+            <input type="text" id="css-radius" placeholder="border-radius (px)" />
+          </div>
+        </div>
+        <div class="field-row">
+          <label class="field">패딩 (상 우 하 좌)</label>
+          <input type="text" id="css-padding" placeholder="예: 12 16 12 16" />
+        </div>
+        <button class="run" id="btn-css">CSS 생성</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="label">생성된 CSS</span></div>
+      <div class="card-body">
+        <div class="css-out" id="css-output"></div>
+        <div class="copy-row"><button class="ghost" id="btn-copy-css">클립보드에 복사</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span>체크레이어 · 규칙 기반 디자인 QA 데모</span>
+  <span class="mono">naming · contrast · css-export</span>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ---------- tab switching ----------
+  var tabButtons = document.querySelectorAll('nav.tabs button');
+  var panels = document.querySelectorAll('section.panel');
+  tabButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      tabButtons.forEach(function (b) { b.classList.remove('active'); });
+      panels.forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
+    });
+  });
+
+  function showToast(text) {
+    var toast = document.getElementById('toast');
+    toast.textContent = text;
+    toast.classList.add('show');
+    setTimeout(function () { toast.classList.remove('show'); }, 1400);
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ---------- naming linter (ported from the Figma plugin's code.js) ----------
+  var sampleNames = [
+    'Button/Text',
+    'button/large',
+    'button/small ',
+    'btns/left',
+    'btn/right',
+    'Button/Icon/Normal',
+    'Textinput/Resource/Textfield/Button',
+    'Pagination/Resource/Navigation/Button'
+  ];
+  document.getElementById('naming-input').value = sampleNames.join('\n');
+
+  function lintNamesFromLines(lines) {
+    var issues = [];
+    var lowerFirstSegmentMap = {};
+
+    lines.forEach(function (name) {
+      if (!name) return;
+
+      if (name !== name.trim()) {
+        issues.push({ rule: 'whitespace', message: '이름 앞뒤 공백: "' + name + '"' });
+      }
+      if (/\/\//.test(name) || /\/$/.test(name.trim())) {
+        issues.push({ rule: 'slash', message: '연속되거나 끝에 남은 슬래시: "' + name + '"' });
+      }
+
+      var trimmed = name.trim();
+      var segments = trimmed.split('/').filter(Boolean);
+      if (segments.length > 0) {
+        var first = segments[0];
+        var key = first.toLowerCase();
+        if (!lowerFirstSegmentMap[key]) lowerFirstSegmentMap[key] = {};
+        lowerFirstSegmentMap[key][first] = (lowerFirstSegmentMap[key][first] || 0) + 1;
+      }
+    });
+
+    Object.keys(lowerFirstSegmentMap).forEach(function (key) {
+      var variants = Object.keys(lowerFirstSegmentMap[key]);
+      if (variants.length > 1) {
+        var isPluralMismatch = variants.some(function (v) {
+          return v.toLowerCase() === key && variants.some(function (o) { return o.toLowerCase() === key + 's'; });
+        });
+        issues.push({
+          rule: isPluralMismatch ? 'plural-mismatch' : 'case-mismatch',
+          message: (isPluralMismatch ? '단수/복수 혼용 감지: ' : '대소문자 혼용 감지: ') +
+            variants.map(function (v) { return '"' + v + '"'; }).join(', ') + ' 가 같은 그룹으로 보입니다'
+        });
+      }
+    });
+
+    return { scannedCount: lines.filter(Boolean).length, issues: issues };
+  }
+
+  document.getElementById('btn-lint').addEventListener('click', function () {
+    var lines = document.getElementById('naming-input').value.split('\n');
+    var result = lintNamesFromLines(lines);
+    var out = document.getElementById('naming-output');
+
+    var summaryHtml = '<div class="result-summary">' +
+      '<span class="n ' + (result.issues.length === 0 ? 'zero' : 'some') + '">' + result.issues.length + '</span>' +
+      '<span class="label2">건 발견 · ' + result.scannedCount + '개 이름 검사함</span></div>';
+
+    if (result.issues.length === 0) {
+      out.innerHTML = summaryHtml + '<div class="ok-line">✓ 컨벤션 문제 없음</div>';
+      return;
+    }
+
+    var listHtml = result.issues.map(function (issue) {
+      return '<div class="issue"><span class="badge ' + issue.rule + '">' + issue.rule + '</span>' +
+        '<span class="msg">' + escapeHtml(issue.message) + '</span></div>';
+    }).join('');
+
+    out.innerHTML = summaryHtml + listHtml;
+  });
+
+  // ---------- contrast checker ----------
+  function hexToRgb01(hex) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(function (c) { return c + c; }).join('');
+    var r = parseInt(hex.substring(0, 2), 16) / 255;
+    var g = parseInt(hex.substring(2, 4), 16) / 255;
+    var b = parseInt(hex.substring(4, 6), 16) / 255;
+    return { r: r, g: g, b: b };
+  }
+  function relLuminance(c) {
+    function channel(v) { return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+    return 0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b);
+  }
+  function contrastRatio(a, b) {
+    var la = relLuminance(a), lb = relLuminance(b);
+    var lighter = Math.max(la, lb), darker = Math.min(la, lb);
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
+  var colorAHex = document.getElementById('color-a-hex');
+  var colorAPick = document.getElementById('color-a-pick');
+  var colorBHex = document.getElementById('color-b-hex');
+  var colorBPick = document.getElementById('color-b-pick');
+
+  colorAHex.value = '#18A0FB';
+  colorAPick.value = '#18A0FB';
+  colorBHex.value = '#FFFFFF';
+  colorBPick.value = '#FFFFFF';
+
+  colorAPick.addEventListener('input', function () { colorAHex.value = colorAPick.value.toUpperCase(); });
+  colorBPick.addEventListener('input', function () { colorBHex.value = colorBPick.value.toUpperCase(); });
+  colorAHex.addEventListener('input', function () { if (/^#[0-9a-fA-F]{6}$/.test(colorAHex.value)) colorAPick.value = colorAHex.value; });
+  colorBHex.addEventListener('input', function () { if (/^#[0-9a-fA-F]{6}$/.test(colorBHex.value)) colorBPick.value = colorBHex.value; });
+
+  document.getElementById('btn-contrast').addEventListener('click', function () {
+    var out = document.getElementById('contrast-output');
+    var hexA = colorAHex.value.trim();
+    var hexB = colorBHex.value.trim();
+    if (!/^#[0-9a-fA-F]{6}$/.test(hexA) || !/^#[0-9a-fA-F]{6}$/.test(hexB)) {
+      out.innerHTML = '<p style="color:var(--fail);font-size:13px;">HEX 코드 형식을 확인해주세요 (예: #18A0FB)</p>';
+      return;
+    }
+    var ratio = contrastRatio(hexToRgb01(hexA), hexToRgb01(hexB));
+    var rounded = Math.round(ratio * 100) / 100;
+    var aa = ratio >= 4.5, aaLarge = ratio >= 3, aaa = ratio >= 7, aaaLarge = ratio >= 4.5;
+
+    out.innerHTML =
+      '<div class="swatch-row">' +
+        '<div class="swatch"><div class="chip" style="background:' + hexA + '"></div><div class="info">' + hexA + '</div></div>' +
+        '<div class="swatch"><div class="chip" style="background:' + hexB + '"></div><div class="info">' + hexB + '</div></div>' +
+      '</div>' +
+      '<div class="ratio-box">' +
+        '<div class="big ' + (aa ? 'pass' : 'fail') + '">' + rounded + ':1</div>' +
+        '<div class="sub">명도 대비 비율</div>' +
+      '</div>' +
+      '<div class="badge-grid">' +
+        '<div class="wcag-badge ' + (aa ? 'pass' : 'fail') + '"><span>AA 일반 텍스트</span><span class="icon">' + (aa ? '✓' : '✕') + '</span></div>' +
+        '<div class="wcag-badge ' + (aaLarge ? 'pass' : 'fail') + '"><span>AA 큰 텍스트/UI</span><span class="icon">' + (aaLarge ? '✓' : '✕') + '</span></div>' +
+        '<div class="wcag-badge ' + (aaa ? 'pass' : 'fail') + '"><span>AAA 일반 텍스트</span><span class="icon">' + (aaa ? '✓' : '✕') + '</span></div>' +
+        '<div class="wcag-badge ' + (aaaLarge ? 'pass' : 'fail') + '"><span>AAA 큰 텍스트</span><span class="icon">' + (aaaLarge ? '✓' : '✕') + '</span></div>' +
+      '</div>';
+  });
+  document.getElementById('btn-contrast').click();
+
+  // ---------- CSS exporter ----------
+  document.getElementById('css-name').value = 'primary-button';
+  document.getElementById('css-bg').value = '#18A0FB';
+  document.getElementById('css-font').value = 'Pretendard';
+  document.getElementById('css-fontsize').value = '15';
+  document.getElementById('css-lineheight').value = '22';
+  document.getElementById('css-letterspacing').value = '-0.2';
+  document.getElementById('css-gap').value = '8';
+  document.getElementById('css-radius').value = '8';
+  document.getElementById('css-padding').value = '12 20 12 20';
+
+  function buildCss() {
+    var name = (document.getElementById('css-name').value.trim() || 'layer')
+      .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'layer';
+    var bg = document.getElementById('css-bg').value.trim();
+    var font = document.getElementById('css-font').value.trim();
+    var fontSize = document.getElementById('css-fontsize').value.trim();
+    var lineHeight = document.getElementById('css-lineheight').value.trim();
+    var letterSpacing = document.getElementById('css-letterspacing').value.trim();
+    var gap = document.getElementById('css-gap').value.trim();
+    var radius = document.getElementById('css-radius').value.trim();
+    var padding = document.getElementById('css-padding').value.trim().split(/\s+/).filter(Boolean);
+
+    var lines = [];
+    if (bg) lines.push('  background-color: ' + bg + ';');
+    if (font) lines.push('  font-family: "' + font + '";');
+    if (fontSize) lines.push('  font-size: ' + fontSize + 'px;');
+    if (lineHeight) lines.push('  line-height: ' + lineHeight + 'px;');
+    if (letterSpacing && Number(letterSpacing) !== 0) lines.push('  letter-spacing: ' + letterSpacing + 'px;');
+    if (gap) lines.push('  gap: ' + gap + 'px;');
+    if (padding.length === 4) lines.push('  padding: ' + padding.map(function (p) { return p + 'px'; }).join(' ') + ';');
+    if (radius) lines.push('  border-radius: ' + radius + 'px;');
+
+    return '.' + name + ' {\n' + lines.join('\n') + '\n}';
+  }
+
+  function renderCss() {
+    document.getElementById('css-output').textContent = buildCss();
+  }
+  document.getElementById('btn-css').addEventListener('click', renderCss);
+  renderCss();
+
+  document.getElementById('btn-copy-css').addEventListener('click', function () {
+    var text = document.getElementById('css-output').textContent;
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('복사됨!');
+    } catch (e) {
+      showToast('복사에 실패했어요');
+    }
+  });
+</script>
