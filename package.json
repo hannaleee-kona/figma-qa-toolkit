@@ -1,0 +1,9 @@
+{
+  "name": "figma-qa-toolkit",
+  "version": "0.1.0",
+  "description": "Design QA Assistant — Figma plugin: naming linter, contrast checker, CSS snippet exporter",
+  "private": true,
+  "scripts": {
+    "lint": "echo \"no build step in MVP — code.js is loaded directly by Figma\""
+  }
+}
