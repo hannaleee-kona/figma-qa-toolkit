@@ -3,9 +3,324 @@
 <head>
 <meta charset="UTF-8" />
 <title>Design QA Assistant</title>
-<style>body{font-family:sans-serif}</style>
+<style>
+  :root {
+    --gray-900: #1a1a1a;
+    --gray-600: #666;
+    --gray-300: #d9d9d9;
+    --gray-100: #f5f5f5;
+    --blue: #18a0fb;
+    --red: #f24822;
+    --green: #14ae5c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 12px;
+    color: var(--gray-900);
+    margin: 0;
+    padding: 0;
+  }
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--gray-300);
+  }
+  .tab {
+    flex: 1;
+    padding: 10px 4px;
+    text-align: center;
+    cursor: pointer;
+    color: var(--gray-600);
+    border-bottom: 2px solid transparent;
+  }
+  .tab.active {
+    color: var(--blue);
+    border-bottom: 2px solid var(--blue);
+    font-weight: 600;
+  }
+  .panel { display: none; padding: 12px; }
+  .panel.active { display: block; }
+  button.primary {
+    width: 100%;
+    background: var(--blue);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.primary:hover { opacity: 0.9; }
+  .hint {
+    color: var(--gray-600);
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+  .result-list {
+    margin-top: 10px;
+    max-height: 340px;
+    overflow-y: auto;
+  }
+  .issue-item {
+    border: 1px solid var(--gray-300);
+    border-left: 3px solid var(--red);
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    cursor: pointer;
+  }
+  .issue-item:hover { background: var(--gray-100); }
+  .issue-rule {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--red);
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .empty-state {
+    color: var(--gray-600);
+    text-align: center;
+    padding: 24px 8px;
+  }
+  .ok-state {
+    color: var(--green);
+    text-align: center;
+    padding: 16px 8px;
+    font-weight: 600;
+  }
+  .contrast-result {
+    margin-top: 12px;
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    padding: 10px;
+  }
+  .contrast-ratio {
+    font-size: 24px;
+    font-weight: 700;
+    text-align: center;
+    margin: 6px 0;
+  }
+  .swatches { display: flex; gap: 8px; margin-bottom: 8px; }
+  .swatch {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+  }
+  .swatch-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid var(--gray-300);
+  }
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .badge {
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .badge.pass { background: #e5f8ee; color: var(--green); }
+  .badge.fail { background: #fdeceb; color: var(--red); }
+  .error-msg {
+    color: var(--red);
+    padding: 10px;
+    background: #fdeceb;
+    border-radius: 6px;
+  }
+  textarea {
+    width: 100%;
+    height: 220px;
+    font-family: "SF Mono", Monaco, monospace;
+    font-size: 11px;
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    padding: 8px;
+    resize: vertical;
+    margin-top: 10px;
+  }
+  .copy-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .copy-row button {
+    flex: 1;
+  }
+  button.secondary {
+    background: var(--gray-100);
+    color: var(--gray-900);
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .toast {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--gray-900);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 14px;
+    font-size: 11px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+</style>
 </head>
 <body>
-<p>placeholder-will-be-replaced</p>
+
+<div class="tabs">
+  <div class="tab active" data-panel="naming">네이밍 체크</div>
+  <div class="tab" data-panel="contrast">컬러 대비</div>
+  <div class="tab" data-panel="css">CSS 추출</div>
+</div>
+
+<div class="panel active" id="panel-naming">
+  <div class="hint">레이어를 선택하고 검사하면 선택 범위(하위 포함)를 검사해요. 선택이 없으면 현재 페이지 전체를 검사해요.</div>
+  <button class="primary" id="btn-lint">네이밍 검사하기</button>
+  <div class="result-list" id="lint-results"></div>
+</div>
+
+<div class="panel" id="panel-contrast">
+  <div class="hint">색상이 있는 레이어 2개를 선택하고(예: 텍스트, 배경) 검사하세요.</div>
+  <button class="primary" id="btn-contrast">대비 검사하기</button>
+  <div id="contrast-results"></div>
+</div>
+
+<div class="panel" id="panel-css">
+  <div class="hint">레이어를 선택하고 추출하면 색상/폰트/스페이싱 값을 CSS로 변환해요.</div>
+  <button class="primary" id="btn-css">CSS로 추출하기</button>
+  <div id="css-results"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const tabs = document.querySelectorAll(".tab");
+  const panels = document.querySelectorAll(".panel");
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      tabs.forEach((t) => t.classList.remove("active"));
+      panels.forEach((p) => p.classList.remove("active"));
+      tab.classList.add("active");
+      document.getElementById("panel-" + tab.dataset.panel).classList.add("active");
+    });
+  });
+
+  function showToast(text) {
+    const toast = document.getElementById("toast");
+    toast.textContent = text;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 1500);
+  }
+
+  // ---------- naming linter ----------
+  document.getElementById("btn-lint").addEventListener("click", () => {
+    document.getElementById("lint-results").innerHTML = '<div class="empty-state">검사 중...</div>';
+    parent.postMessage({ pluginMessage: { type: "LINT_NAMING" } }, "*");
+  });
+
+  function renderLintResults(payload) {
+    const container = document.getElementById("lint-results");
+    if (!payload.issues || payload.issues.length === 0) {
+      container.innerHTML =
+        '<div class="ok-state">✓ 문제 없음 (' + payload.scannedCount + '개 레이어 검사)</div>';
+      return;
+    }
+    container.innerHTML = "";
+    payload.issues.forEach((issue) => {
+      const el = document.createElement("div");
+      el.className = "issue-item";
+      el.innerHTML =
+        '<div class="issue-rule">' + issue.rule + '</div><div>' + escapeHtml(issue.message) + "</div>";
+      if (issue.nodeId) {
+        el.addEventListener("click", () => {
+          parent.postMessage({ pluginMessage: { type: "SELECT_NODE", nodeId: issue.nodeId } }, "*");
+        });
+      }
+      container.appendChild(el);
+    });
+  }
+
+  // ---------- contrast checker ----------
+  document.getElementById("btn-contrast").addEventListener("click", () => {
+    document.getElementById("contrast-results").innerHTML = '<div class="empty-state">검사 중...</div>';
+    parent.postMessage({ pluginMessage: { type: "CHECK_CONTRAST" } }, "*");
+  });
+
+  function renderContrastResults(payload) {
+    const container = document.getElementById("contrast-results");
+    if (payload.error) {
+      container.innerHTML = '<div class="error-msg">' + escapeHtml(payload.error) + "</div>";
+      return;
+    }
+    const passAA = payload.aaNormal;
+    container.innerHTML = `
+      <div class="contrast-result">
+        <div class="swatches">
+          <div class="swatch"><span class="swatch-color" style="background:${payload.hexA}"></span>${escapeHtml(payload.nameA)} (${payload.hexA})</div>
+          <div class="swatch"><span class="swatch-color" style="background:${payload.hexB}"></span>${escapeHtml(payload.nameB)} (${payload.hexB})</div>
+        </div>
+        <div class="contrast-ratio" style="color:${passAA ? "#14ae5c" : "#f24822"}">${payload.ratio}:1</div>
+        <div class="badges">
+          <span class="badge ${payload.aaNormal ? "pass" : "fail"}">AA 일반 텍스트</span>
+          <span class="badge ${payload.aaLarge ? "pass" : "fail"}">AA 큰 텍스트/UI</span>
+          <span class="badge ${payload.aaaNormal ? "pass" : "fail"}">AAA 일반 텍스트</span>
+          <span class="badge ${payload.aaaLarge ? "pass" : "fail"}">AAA 큰 텍스트</span>
+        </div>
+      </div>
+    `;
+  }
+
+  // ---------- CSS exporter ----------
+  document.getElementById("btn-css").addEventListener("click", () => {
+    document.getElementById("css-results").innerHTML = '<div class="empty-state">추출 중...</div>';
+    parent.postMessage({ pluginMessage: { type: "EXPORT_CSS" } }, "*");
+  });
+
+  function renderCssResults(payload) {
+    const container = document.getElementById("css-results");
+    if (payload.error) {
+      container.innerHTML = '<div class="error-msg">' + escapeHtml(payload.error) + "</div>";
+      return;
+    }
+    container.innerHTML = `
+      <textarea id="css-output" readonly>${escapeHtml(payload.css)}</textarea>
+      <div class="copy-row">
+        <button class="secondary" id="btn-copy-css">클립보드에 복사</button>
+      </div>
+    `;
+    document.getElementById("btn-copy-css").addEventListener("click", () => {
+      const textarea = document.getElementById("css-output");
+      textarea.select();
+      document.execCommand("copy");
+      showToast("복사됨!");
+    });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  window.onmessage = (event) => {
+    const msg = event.data.pluginMessage;
+    if (!msg) return;
+    if (msg.type === "LINT_NAMING_RESULT") renderLintResults(msg.payload);
+    if (msg.type === "CHECK_CONTRAST_RESULT") renderContrastResults(msg.payload);
+    if (msg.type === "EXPORT_CSS_RESULT") renderCssResults(msg.payload);
+  };
+</script>
+
 </body>
 </html>
